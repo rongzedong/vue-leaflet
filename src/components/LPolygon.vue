@@ -7,6 +7,8 @@ import {
   nextTick,
   onMounted,
   ref,
+  watch,
+  onUnmounted
 } from "vue";
 
 import { render } from "@src/functions/layer";
@@ -27,7 +29,13 @@ import {
  */
 export default defineComponent({
   name: "LPolygon",
-  props: polygonProps,
+  props: {
+    ...polygonProps,
+    edit: {
+      type: Boolean,
+      default: false,
+    },
+  },
   setup(props, context) {
     const leafletObject = ref<L.Polygon>();
     const ready = ref(false);
@@ -36,6 +44,42 @@ export default defineComponent({
     const addLayer = assertInject(AddLayerInjection);
 
     const { options, methods } = setupPolygon(props, leafletObject, context);
+
+    // === 编辑模式相关 ===
+    const handleMarkers = ref<L.Marker[]>([]);
+    const map = ref<L.Map>();
+
+    function addHandles() {
+      removeHandles();
+      if (!leafletObject.value || !leafletObject.value._map) return;
+      map.value = leafletObject.value._map;
+      (props.latLngs || []).forEach((latlng, idx) => {
+        const marker = L.marker(latlng, {
+          draggable: true,
+          icon: L.divIcon({
+            className: "edit-handle",
+            iconSize: [12, 12],
+            iconAnchor: [6, 6],
+            html: `<div style="width:12px;height:12px;background:#fff;border:2px solid #41b782;border-radius:2px"></div>`,
+          }),
+          interactive: true,
+        });
+        marker.on("drag", (e) => {
+          const newLatLng = e.target.getLatLng();
+          const updated = [...props.latLngs];
+          updated[idx] = [newLatLng.lat, newLatLng.lng];
+          context.emit("update:latLngs", updated);
+          context.emit("change", updated);
+        });
+        marker.addTo(map.value);
+        handleMarkers.value.push(marker);
+      });
+    }
+
+    function removeHandles() {
+      handleMarkers.value.forEach((m) => m.remove());
+      handleMarkers.value = [];
+    }
 
     onMounted(async () => {
       const { polygon }: typeof L = useGlobalLeaflet
@@ -56,7 +100,28 @@ export default defineComponent({
       });
       ready.value = true;
       nextTick(() => context.emit("ready", leafletObject.value));
+
+      // 编辑模式监听
+      watch(
+        () => props.edit,
+        (val) => {
+          if (val) addHandles();
+          else removeHandles();
+        },
+        { immediate: true }
+      );
+      watch(
+        () => props.latLngs,
+        () => {
+          if (props.edit) {
+            removeHandles();
+            addHandles();
+          }
+        }
+      );
     });
+
+    onUnmounted(removeHandles);
 
     return { ready, leafletObject };
   },
@@ -65,3 +130,9 @@ export default defineComponent({
   },
 });
 </script>
+
+<style>
+.edit-handle {
+  z-index: 1000;
+}
+</style>
