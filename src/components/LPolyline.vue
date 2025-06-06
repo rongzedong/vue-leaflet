@@ -1,51 +1,18 @@
 <script lang="ts">
-import type L from "leaflet";
-import {
-  defineComponent,
-  inject,
-  markRaw,
-  nextTick,
-  onMounted,
-  ref,
-  watch,
-  onUnmounted
-} from "vue";
-
-import { render } from "@src/functions/layer";
-import { polygonProps, setupPolygon } from "@src/functions/polygon";
-import {
-  AddLayerInjection,
-  UseGlobalLeafletInjection,
-} from "@src/types/injectionKeys";
-import {
-  WINDOW_OR_GLOBAL,
-  assertInject,
-  propsBinder,
-  remapEvents,
-} from "@src/utils.js";
-
-/**
- * Polygon component, lets you add and customize polygon regions on the map
- */
+// ...原有 import
+import { ref, watch, onUnmounted, onMounted } from "vue";
+// ...原有代码
 export default defineComponent({
-  name: "LPolygon",
+  name: "LPolyline",
   props: {
-    ...polygonProps,
+    ...polylineProps,
     edit: {
       type: Boolean,
       default: false,
     },
   },
   setup(props, context) {
-    const leafletObject = ref<L.Polygon>();
-    const ready = ref(false);
-
-    const useGlobalLeaflet = inject(UseGlobalLeafletInjection);
-    const addLayer = assertInject(AddLayerInjection);
-
-    const { options, methods } = setupPolygon(props, leafletObject, context);
-
-    // === 编辑模式相关 ===
+    // ...原有代码
     const handleMarkers = ref<L.Marker[]>([]);
     const map = ref<L.Map>();
 
@@ -53,14 +20,14 @@ export default defineComponent({
       removeHandles();
       if (!leafletObject.value || !leafletObject.value._map) return;
       map.value = leafletObject.value._map;
-      (props.latLngs || []).forEach((latlng, idx) => {
+      props.latLngs.forEach((latlng, idx) => {
         const marker = L.marker(latlng, {
           draggable: true,
           icon: L.divIcon({
             className: "edit-handle",
             iconSize: [12, 12],
             iconAnchor: [6, 6],
-            html: `<div style="width:12px;height:12px;background:#fff;border:2px solid #41b782;border-radius:2px"></div>`,
+            html: `<div style="width:12px;height:12px;background:#fff;border:2px solid #3388ff;border-radius:2px"></div>`,
           }),
           interactive: true,
         });
@@ -81,27 +48,8 @@ export default defineComponent({
       handleMarkers.value = [];
     }
 
-    onMounted(async () => {
-      const { polygon }: typeof L = useGlobalLeaflet
-        ? WINDOW_OR_GLOBAL.L
-        : await import("leaflet/dist/leaflet-src.esm");
-
-      leafletObject.value = markRaw<L.Polygon>(polygon(props.latLngs, options));
-
-      const { listeners } = remapEvents(context.attrs);
-      leafletObject.value.on(listeners);
-
-      propsBinder(methods, leafletObject.value, props);
-
-      addLayer({
-        ...props,
-        ...methods,
-        leafletObject: leafletObject.value,
-      });
-      ready.value = true;
-      nextTick(() => context.emit("ready", leafletObject.value));
-
-      // 编辑模式监听
+    onMounted(() => {
+      // ...原有 onMounted 代码
       watch(
         () => props.edit,
         (val) => {
@@ -120,17 +68,12 @@ export default defineComponent({
         }
       );
     });
-
     onUnmounted(removeHandles);
-
-    return { ready, leafletObject };
+    // ...原有 return
   },
-  render() {
-    return render(this.ready, this.$slots);
-  },
+  // ...原有 render
 });
 </script>
-
 <style>
 .edit-handle {
   z-index: 1000;
