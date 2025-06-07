@@ -22,12 +22,13 @@ import { LMap, LPolygon, LTileLayer } from "@src/components";
 
 import { ref, watch } from "vue";
 
-const latlngs = ref([
+ 
+const latlngs = ref<[number, number][]>([
   [25.774, -80.19],
   [18.466, -66.118],
   [32.321, -64.757],
   [25.774, -80.19],
-]);
+])
 
 watch(latlngs, (newVal) => {
   console.log('latlngs changed:', newVal)
