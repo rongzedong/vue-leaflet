@@ -15,6 +15,7 @@ export default defineComponent({
   },
   setup(props, context) {
     // ...原有代码
+    const leafletObject = ref<L.Polyline>();
     const handleMarkers = ref<L.Marker[]>([]);
     const map = ref<L.Map>();
 
