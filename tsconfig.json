@@ -1,9 +1,10 @@
 {
-  "ignoreDeprecations": "5.0",
   "extends": "@vue/tsconfig/tsconfig.web.json",
   "include": ["env.d.ts", "src/**/*", "src/**/*.vue", "tests/**/*"],
   "exclude": ["./dist/**/*"],
   "compilerOptions": {
+     "verbatimModuleSyntax": true,
+    "ignoreDeprecations": "5.0",
     "allowJs": false,
     "baseUrl": ".",
     "paths": {
