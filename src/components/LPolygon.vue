@@ -1,21 +1,21 @@
 <script lang="ts">
-import L from "leaflet";
+import type L from "leaflet";
 import { defineComponent, inject, markRaw, onMounted, ref, watch, onUnmounted } from "vue";
-import { LMapInjectionKey } from "@src/types/injectionKeys";
+import { LMapInjectionKey, AddLayerInjection } from "@src/types/injectionKeys";
 import { setupPolygon, polygonProps } from "@src/functions/polygon";
+import { render } from "@src/functions/layer";
+import { assertInject } from "@src/utils.js";
 
+/**
+ * Polygon component, lets you add polygons to the map
+ */
 export default defineComponent({
   name: "LPolygon",
-  props: {
-    ...polygonProps,
-    edit: {
-      type: Boolean,
-      default: false,
-    },
-  },
+  props: polygonProps,
   setup(props, context) {
     const leafletObject = ref<L.Polygon>();
     const map = inject<any>(LMapInjectionKey);
+    const addLayer = assertInject(AddLayerInjection);
 
     const { options, methods } = setupPolygon(props, leafletObject, context);
 
@@ -27,7 +27,13 @@ export default defineComponent({
 
     onMounted(() => {
       leafletObject.value = markRaw(L.polygon(getPoints(), options));
+      addLayer({
+        ...props,
+        ...methods,
+        leafletObject: leafletObject.value,
+      });
 
+      // Watch for editing state
       watch(
         () => props.edit,
         (val) => {
@@ -36,6 +42,7 @@ export default defineComponent({
         },
         { immediate: true }
       );
+      // Watch for points changes
       watch(
         () => getPoints(),
         () => {
@@ -51,13 +58,11 @@ export default defineComponent({
       methods.removeEditHandles();
     });
 
-    return { leafletObject };
+    return { leafletObject, ready: true };
+  },
+  render() {
+    // 这里直接参考 LMarker 的 render模式
+    return render(this.ready, this.$slots);
   },
 });
 </script>
-
-<style>
-.edit-handle {
-  z-index: 1000;
-}
-</style>
