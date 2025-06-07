@@ -54,7 +54,7 @@ export default defineComponent({
       wrap.forEach((ring, ringIdx) => {
         ring.forEach((latlng, idx) => {
           const marker = L.marker(latlng, { draggable: true });
-          marker.on('drag', (e) => {
+          marker.on('drag', (e: L.LeafletMouseEvent) => {
             wrap[ringIdx][idx] = [e.latlng.lat, e.latlng.lng];
             const newLatlngs = isMulti ? wrap : wrap[0];
             leafletObject.value?.setLatLngs(newLatlngs);
@@ -74,7 +74,7 @@ export default defineComponent({
 
     function removeEditLayerGroup() {
       if (editLayerGroup.value) {
-        removeLayer({ leafletObject: editLayerGroup.value });
+        removeLayer({ leafletObject: editLayerGroup.value as  L.layerGroup });
         editLayerGroup.value = null;
       }
     }
