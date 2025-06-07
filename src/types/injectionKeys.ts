@@ -1,8 +1,6 @@
 import type L from "leaflet";
 import type { InjectionKey } from "vue";
 
-export const LMapInjectionKey = Symbol("lMap") as InjectionKey<L.Map>;
-
 import type { IControlDefinition, ILayerDefinition } from "./interfaces";
 
 export const UseGlobalLeafletInjection = Symbol(
