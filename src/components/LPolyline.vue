@@ -30,8 +30,9 @@ export default defineComponent({
       const group = L.layerGroup();
       latlngs.forEach((latlng, idx) => {
         const marker = L.marker(latlng, { draggable: true });
-        marker.on('drag', (e) => {
-          latlngs[idx] = [e.latlng.lat, e.latlng.lng];
+        marker.on('drag', (e: L.LeafletEvent) => {
+          const latlng = marker.getLatLng();
+          latlngs[idx] = [latlng.lat, latlng.lng];
           leafletObject.value?.setLatLngs(latlngs);
         });
         marker.on('dragend', () => {
@@ -45,7 +46,7 @@ export default defineComponent({
 
     function removeEditLayerGroup() {
       if (editLayerGroup.value) {
-        removeLayer({ leafletObject: editLayerGroup.value });
+        removeLayer({ leafletObject: editLayerGroup.value as unknown as L.LayerGroup });
         editLayerGroup.value = null;
       }
     }
