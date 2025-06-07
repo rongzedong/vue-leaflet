@@ -12,77 +12,43 @@ import {
   onUnmounted
 } from "vue";
 import { AddLayerInjection, UseGlobalLeafletInjection, LMapInjectionKey } from "@src/types/injectionKeys";
+import { setupPolyline, polylineProps } from "@src/functions/polyline";
 
 export default defineComponent({
   name: "LPolyline",
-  props: {
-    latLngs: {
-      type: Array as () => LatLngExpression[],
-      required: true
-    },
-    edit: { type: Boolean, default: false }
-  },
+  props: polylineProps,
   setup(props, context) {
     const leafletObject = ref<L.Polyline>();
     const map = inject<any>(LMapInjectionKey);
-    const handleMarkers = ref<L.Marker[]>([]);
 
-    function addHandles() {
-      removeHandles();
-      if (!leafletObject.value || !map?.value) return;
-      (props.latLngs as LatLngExpression[]).forEach((latlng, idx) => {
-        const marker = L.marker(latlng, {
-          draggable: true,
-          icon: L.divIcon({
-            className: "edit-handle",
-            iconSize: [12, 12],
-            iconAnchor: [6, 6],
-            html: `<div style="width:12px;height:12px;background:#fff;border:2px solid #41b782;border-radius:2px"></div>`,
-          }),
-          interactive: true,
-        });
-        marker.on("drag", (e) => {
-          const newLatLng = e.target.getLatLng();
-          const updated = [...(props.latLngs as LatLngExpression[])];
-          updated[idx] = [newLatLng.lat, newLatLng.lng];
-          context.emit("update:latLngs", updated);
-          context.emit("change", updated);
-        });
-        if (map.value) {
-          marker.addTo(map.value);
-        }
-        handleMarkers.value.push(marker);
-      });
-    }
-
-    function removeHandles() {
-      handleMarkers.value.forEach((m) => m.remove());
-      handleMarkers.value = [];
-    }
+    const { options, methods } = setupPolyline(props, leafletObject, context);
 
     onMounted(() => {
-      leafletObject.value = markRaw(L.polyline(props.latLngs as LatLngExpression[]));
-      // 你可在这里绑定事件等
+      leafletObject.value = markRaw(L.polyline(props.latLngs as LatLngExpression[], options));
+      // 监听 edit 状态
       watch(
         () => props.edit,
         (val) => {
-          if (val) addHandles();
-          else removeHandles();
+          if (val && map?.value) methods.addEditHandles(map.value);
+          else methods.removeEditHandles();
         },
         { immediate: true }
       );
+      // 监听数据变化，刷新 handle
       watch(
         () => props.latLngs,
         () => {
-          if (props.edit) {
-            removeHandles();
-            addHandles();
+          if (props.edit && map?.value) {
+            methods.removeEditHandles();
+            methods.addEditHandles(map.value);
           }
         }
       );
     });
 
-    onUnmounted(removeHandles);
+    onUnmounted(() => {
+      methods.removeEditHandles();
+    });
 
     return { leafletObject };
   }
