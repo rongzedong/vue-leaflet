@@ -1,4 +1,4 @@
-import type L from "leaflet";
+import L from "leaflet";
 import type { PropType } from "vue";
 import { ref } from "vue";
 import { propsToLeafletOptions } from "@src/utils";
