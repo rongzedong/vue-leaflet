@@ -5,6 +5,7 @@ import { AddLayerInjection, RemoveLayerInjection } from "@src/types/injectionKey
 import { setupPolygon, polygonProps } from "@src/functions/polygon";
 import { render } from "@src/functions/layer";
 import { assertInject } from "@src/utils.js";
+import type { LatLngExpression } from 'leaflet';
 
 export default defineComponent({
   name: "LPolygon",
@@ -34,15 +35,9 @@ export default defineComponent({
 
       // 判断多环还是单环
       let isMulti = false;
-      if (
-        Array.isArray(latlngs[0]) &&
-        Array.isArray(latlngs[0][0])
-      ) {
+      if ( Array.isArray(latlngs[0]) && Array.isArray(latlngs[0][0]) ) {
         isMulti = true;
-      } else if (
-        Array.isArray(latlngs[0]) &&
-        (typeof latlngs[0][0] === 'number' || typeof latlngs[0][0] === 'string')
-      ) {
+      } else if ( Array.isArray(latlngs[0]) && (typeof latlngs[0][0] === 'number' || typeof latlngs[0][0] === 'string') ) {
         isMulti = false;
       } else {
         throw new Error('Polygon latlngs format is invalid');
@@ -76,7 +71,7 @@ export default defineComponent({
 
     function removeEditLayerGroup() {
       if (editLayerGroup.value) {
-        removeLayer({ leafletObject: editLayerGroup.value as unknown as L.LayerGroup });
+        removeLayer({ leafletObject: editLayerGroup.value as L.LayerGroup });
         editLayerGroup.value = null;
       }
     }
