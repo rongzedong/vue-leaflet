@@ -1,5 +1,6 @@
 <script lang="ts">
-import L, { LatLngExpression } from "leaflet";
+import L from "leaflet";
+import type { LatLngExpression } from "leaflet";
 import {
   defineComponent,
   inject,
