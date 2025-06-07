@@ -7,21 +7,31 @@
     ></l-tile-layer>
 
     <l-polygon
-      :lat-lngs="[
-        [25.774, -80.19],
-        [18.466, -66.118],
-        [32.321, -64.757],
-        [25.774, -80.19],
-      ]"
+      :edit=true
+      v-model:lat-lngs="latlngs"
       color="#41b782"
       :fill="true"
       :fillOpacity="0.5"
       fillColor="#41b782"
+
     />
   </l-map>
 </template>
 <script lang="ts">
 import { LMap, LPolygon, LTileLayer } from "@src/components";
+
+import { ref, watch } from "vue";
+
+const latlngs = ref([
+  [25.774, -80.19],
+  [18.466, -66.118],
+  [32.321, -64.757],
+  [25.774, -80.19],
+]);
+
+watch(latlngs, (newVal) => {
+  console.log('latlngs changed:', newVal)
+});
 
 export default {
   components: {
@@ -32,9 +42,12 @@ export default {
   data() {
     return {
       zoom: 5,
+      latlngs: latlngs
     };
   },
 };
+
+
 </script>
 
 <style></style>
