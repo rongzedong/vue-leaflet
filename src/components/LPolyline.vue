@@ -1,5 +1,6 @@
 <script lang="ts">
 // ...原有 import
+import L from "leaflet";
 import { ref, watch, onUnmounted, onMounted, defineComponent } from "vue";
 import { polylineProps } from "@src/functions/polyline";
 // ...原有代码
