@@ -19,7 +19,6 @@ export default defineComponent({
     const { options, methods } = setupPolygon(props, leafletObject, context);
 
     function getPoints() {
-      if (props.coordinates && props.coordinates.length) return props.coordinates;
       if (props.latLngs && props.latLngs.length) return props.latLngs;
       return [];
     }
