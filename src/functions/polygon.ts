@@ -1,4 +1,4 @@
-import type L from "leaflet";
+import L from "leaflet";
 import { propsToLeafletOptions } from "@src/utils";
 import { polylineProps, setupPolyline } from "./polyline";
 import { ref } from "vue";
