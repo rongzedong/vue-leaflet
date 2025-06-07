@@ -1,84 +1,49 @@
-import L from "leaflet";
+import type L from "leaflet";
+import { pathProps, setupPath } from "./path";
 import { propsToLeafletOptions } from "@src/utils";
-import { polylineProps, setupPolyline } from "./polyline";
-import { ref } from "vue";
 
 export const polygonProps = {
-  ...polylineProps,
+  ...pathProps,
+  smoothFactor: {
+    type: Number,
+    default: undefined,
+  },
+  noClip: {
+    type: Boolean,
+    default: undefined,
+  },
+  latLngs: {
+    type: Array as () => L.LatLngExpression[] | L.LatLngExpression[][],
+    default: undefined,
+  },
+  edit: {
+    type: Boolean,
+    default: false,
+  },
 } as const;
 
 export const setupPolygon = (props, leafletRef, context) => {
-  const { options: polylineOptions, methods: polylineMethods } = setupPolyline(
-    props,
-    leafletRef,
-    context
-  );
+  const { options: pathOptions, methods: pathMethods } = setupPath(props, leafletRef, context);
 
   const options = propsToLeafletOptions<L.PolylineOptions>(
     props,
     polygonProps,
-    polylineOptions
+    pathOptions
   );
 
-  // 编辑相关
-  const handleMarkers = ref<L.Marker[]>([]);
-
-  function getPoints() {
-    if (props.coordinates && props.coordinates.length) return props.coordinates;
-    if (props.latLngs && props.latLngs.length) return props.latLngs;
-    return [];
-  }
-
-  function emitUpdate(arr: L.LatLngExpression[]) {
-    // 优先 emit coordinates
-    if (props.coordinates !== undefined) {
-      context.emit("update:coordinates", arr);
-      context.emit("change", arr);
-    } else {
-      context.emit("update:latLngs", arr);
-      context.emit("change", arr);
-    }
-  }
-
-  function addEditHandles(map: L.Map) {
-    removeEditHandles();
-    const points = getPoints();
-    if (!leafletRef.value || !map || !Array.isArray(points)) return;
-    points.forEach((latlng, idx) => {
-      const marker = L.marker(latlng, {
-        draggable: true,
-        icon: L.divIcon({
-          className: "edit-handle",
-          iconSize: [12, 12],
-          iconAnchor: [6, 6],
-          html: `<div style="width:12px;height:12px;background:#fff;border:2px solid #41b782;border-radius:2px"></div>`,
-        }),
-        interactive: true,
-      });
-      marker.on("drag", (e) => {
-        const newLatLng = e.target.getLatLng();
-        const updated = [...points];
-        updated[idx] = [newLatLng.lat, newLatLng.lng];
-        emitUpdate(updated);
-      });
-      marker.addTo(map);
-      handleMarkers.value.push(marker);
-    });
-  }
-
-  function removeEditHandles() {
-    handleMarkers.value.forEach((m) => m.remove());
-    handleMarkers.value = [];
-  }
-
   const methods = {
-    ...polylineMethods,
-    addEditHandles,
-    removeEditHandles,
-    toGeoJSON(precision?: number) {
-      return leafletRef.value.toGeoJSON(precision);
+    ...pathMethods,
+    setSmoothFactor(smoothFactor) {
+      leafletRef.value.setStyle({ smoothFactor });
     },
+    setNoClip(noClip) {
+      leafletRef.value.setStyle({ noClip });
+    },
+    addLatLng(latLng) {
+      leafletRef.value.addLatLng(latLng);
+    },
+    // （如有原addEditHandles/removeEditHandles等方法，可安全移除，仅保留与本次需求相关方法）
   };
 
-  return { options, methods, handleMarkers };
+  return { options, methods };
 };
