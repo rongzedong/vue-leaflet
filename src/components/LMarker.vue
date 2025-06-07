@@ -60,7 +60,7 @@ export default defineComponent({
     });
     provide(
     SetIconInjection,
-    (newIcon: L.DivIcon | L.Icon | undefined) =>
+    (newIcon: L.DivIcon | L.Icon) =>
       leafletObject.value?.setIcon && leafletObject.value.setIcon(newIcon)
     );
     const { options, methods } = setupMarker(props, leafletObject, context);
