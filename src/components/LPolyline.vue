@@ -1,5 +1,5 @@
 <script lang="ts">
-import L from "leaflet";
+import L, { LatLngExpression } from "leaflet";
 import {
   defineComponent,
   inject,
@@ -15,7 +15,10 @@ import { AddLayerInjection, UseGlobalLeafletInjection, LMapInjectionKey } from "
 export default defineComponent({
   name: "LPolyline",
   props: {
-    latLngs: { type: Array, required: true },
+    latLngs: {
+      type: Array as () => LatLngExpression[],
+      required: true
+    },
     edit: { type: Boolean, default: false }
   },
   setup(props, context) {
@@ -26,7 +29,7 @@ export default defineComponent({
     function addHandles() {
       removeHandles();
       if (!leafletObject.value || !map?.value) return;
-      (props.latLngs || []).forEach((latlng, idx) => {
+      (props.latLngs as LatLngExpression[]).forEach((latlng, idx) => {
         const marker = L.marker(latlng, {
           draggable: true,
           icon: L.divIcon({
@@ -39,7 +42,7 @@ export default defineComponent({
         });
         marker.on("drag", (e) => {
           const newLatLng = e.target.getLatLng();
-          const updated = [...props.latLngs];
+          const updated = [...(props.latLngs as LatLngExpression[])];
           updated[idx] = [newLatLng.lat, newLatLng.lng];
           context.emit("update:latLngs", updated);
           context.emit("change", updated);
@@ -57,7 +60,7 @@ export default defineComponent({
     }
 
     onMounted(() => {
-      leafletObject.value = markRaw(L.polyline(props.latLngs));
+      leafletObject.value = markRaw(L.polyline(props.latLngs as LatLngExpression[]));
       // 你可在这里绑定事件等
       watch(
         () => props.edit,
