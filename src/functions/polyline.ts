@@ -66,10 +66,10 @@ export const setupPolyline = (props, leafletRef, context) => {
     }
   }
 
-  function addEditHandles(map: L.Map) {
+  function addEditHandles() {
     removeEditHandles();
     const points = getPoints();
-    if (!leafletRef.value || !map || !Array.isArray(points)) return;
+    if (!leafletRef.value || !Array.isArray(points)) return;
     points.forEach((latlng, idx) => {
       const marker = L.marker(latlng, {
         draggable: true,
@@ -87,9 +87,10 @@ export const setupPolyline = (props, leafletRef, context) => {
         updated[idx] = [newLatLng.lat, newLatLng.lng];
         emitUpdate(updated);
       });
-      marker.addTo(map);
+      // marker.addTo(leafletRef.value);
       handleMarkers.value.push(marker);
     });
+    return handleMarkers;
   }
 
   function removeEditHandles() {
