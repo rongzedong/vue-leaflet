@@ -1,6 +1,7 @@
 <script lang="ts">
 // ...原有 import
-import { ref, watch, onUnmounted, onMounted } from "vue";
+import { ref, watch, onUnmounted, onMounted， defineComponent } from "vue";
+import { polylineProps } from "@src/functions/polyline";
 // ...原有代码
 export default defineComponent({
   name: "LPolyline",
