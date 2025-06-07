@@ -5,13 +5,12 @@ import {
   defineComponent,
   inject,
   markRaw,
-  nextTick,
   onMounted,
   ref,
   watch,
   onUnmounted
 } from "vue";
-import { AddLayerInjection, UseGlobalLeafletInjection, LMapInjectionKey } from "@src/types/injectionKeys";
+import { LMapInjectionKey } from "@src/types/injectionKeys";
 import { setupPolyline, polylineProps } from "@src/functions/polyline";
 
 export default defineComponent({
@@ -23,9 +22,14 @@ export default defineComponent({
 
     const { options, methods } = setupPolyline(props, leafletObject, context);
 
+    function getPoints() {
+      if (props.coordinates && props.coordinates.length) return props.coordinates;
+      if (props.latLngs && props.latLngs.length) return props.latLngs;
+      return [];
+    }
+
     onMounted(() => {
-      leafletObject.value = markRaw(L.polyline(props.latLngs as LatLngExpression[], options));
-      // 监听 edit 状态
+      leafletObject.value = markRaw(L.polyline(getPoints(), options));
       watch(
         () => props.edit,
         (val) => {
@@ -34,9 +38,8 @@ export default defineComponent({
         },
         { immediate: true }
       );
-      // 监听数据变化，刷新 handle
       watch(
-        () => props.latLngs,
+        () => getPoints(),
         () => {
           if (props.edit && map?.value) {
             methods.removeEditHandles();
