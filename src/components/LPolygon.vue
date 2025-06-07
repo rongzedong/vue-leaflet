@@ -1,5 +1,5 @@
 <script lang="ts">
-import type L from "leaflet";
+import L from "leaflet";
 import {
   defineComponent,
   inject,
