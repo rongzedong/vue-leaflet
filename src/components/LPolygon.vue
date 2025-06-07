@@ -1,5 +1,5 @@
 <script lang="ts">
-import type L from "leaflet";
+import L from "leaflet";
 import { defineComponent, inject, markRaw, onMounted, ref, watch, onUnmounted } from "vue";
 import { LMapInjectionKey, AddLayerInjection } from "@src/types/injectionKeys";
 import { setupPolygon, polygonProps } from "@src/functions/polygon";
