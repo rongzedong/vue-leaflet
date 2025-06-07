@@ -1,36 +1,39 @@
 <script lang="ts">
-// ...原有 import
 import L from "leaflet";
-import { ref, watch, onUnmounted, onMounted, defineComponent } from "vue";
-import { polylineProps } from "@src/functions/polyline";
-// ...原有代码
+import {
+  defineComponent,
+  inject,
+  markRaw,
+  nextTick,
+  onMounted,
+  ref,
+  watch,
+  onUnmounted
+} from "vue";
+import { AddLayerInjection, UseGlobalLeafletInjection, LMapInjectionKey } from "@src/types/injectionKeys";
+
 export default defineComponent({
   name: "LPolyline",
   props: {
-    ...polylineProps,
-    edit: {
-      type: Boolean,
-      default: false,
-    },
+    latLngs: { type: Array, required: true },
+    edit: { type: Boolean, default: false }
   },
   setup(props, context) {
-    // ...原有代码
     const leafletObject = ref<L.Polyline>();
+    const map = inject<any>(LMapInjectionKey);
     const handleMarkers = ref<L.Marker[]>([]);
-    const map = ref<L.Map>();
 
     function addHandles() {
       removeHandles();
-      if (!leafletObject.value || !leafletObject.value._map) return;
-      map.value = leafletObject.value._map;
-      props.latLngs.forEach((latlng, idx) => {
+      if (!leafletObject.value || !map?.value) return;
+      (props.latLngs || []).forEach((latlng, idx) => {
         const marker = L.marker(latlng, {
           draggable: true,
           icon: L.divIcon({
             className: "edit-handle",
             iconSize: [12, 12],
             iconAnchor: [6, 6],
-            html: `<div style="width:12px;height:12px;background:#fff;border:2px solid #3388ff;border-radius:2px"></div>`,
+            html: `<div style="width:12px;height:12px;background:#fff;border:2px solid #41b782;border-radius:2px"></div>`,
           }),
           interactive: true,
         });
@@ -41,7 +44,9 @@ export default defineComponent({
           context.emit("update:latLngs", updated);
           context.emit("change", updated);
         });
-        marker.addTo(map.value);
+        if (map.value) {
+          marker.addTo(map.value);
+        }
         handleMarkers.value.push(marker);
       });
     }
@@ -52,7 +57,8 @@ export default defineComponent({
     }
 
     onMounted(() => {
-      // ...原有 onMounted 代码
+      leafletObject.value = markRaw(L.polyline(props.latLngs));
+      // 你可在这里绑定事件等
       watch(
         () => props.edit,
         (val) => {
@@ -71,12 +77,14 @@ export default defineComponent({
         }
       );
     });
+
     onUnmounted(removeHandles);
-    // ...原有 return
-  },
-  // ...原有 render
+
+    return { leafletObject };
+  }
 });
 </script>
+
 <style>
 .edit-handle {
   z-index: 1000;
