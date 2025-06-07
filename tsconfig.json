@@ -4,6 +4,7 @@
   "include": ["env.d.ts", "src/**/*", "src/**/*.vue", "tests/**/*"],
   "exclude": ["./dist/**/*"],
   "compilerOptions": {
+    "verbatimModuleSyntax": true,
     "allowJs": false,
     "baseUrl": ".",
     "paths": {
