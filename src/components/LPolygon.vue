@@ -1,4 +1,5 @@
 <script lang="ts">
+import type L from "leaflet";
 import L from "leaflet";
 import {
   defineComponent,
@@ -16,6 +17,7 @@ import { polygonProps, setupPolygon } from "@src/functions/polygon";
 import {
   AddLayerInjection,
   UseGlobalLeafletInjection,
+  LMapInjectionKey // 请确保此 key 存在你的项目注入 keys 中
 } from "@src/types/injectionKeys";
 import {
   WINDOW_OR_GLOBAL,
@@ -42,17 +44,17 @@ export default defineComponent({
 
     const useGlobalLeaflet = inject(UseGlobalLeafletInjection);
     const addLayer = assertInject(AddLayerInjection);
+    const map = inject<any>(LMapInjectionKey); // <== 通过注入获取 map 实例
 
     const { options, methods } = setupPolygon(props, leafletObject, context);
 
     // === 编辑模式相关 ===
     const handleMarkers = ref<L.Marker[]>([]);
-    const map = ref<L.Map>();
 
     function addHandles() {
       removeHandles();
-      if (!leafletObject.value || !leafletObject.value._map) return;
-      map.value = leafletObject.value._map;
+      if (!leafletObject.value || !map?.value) return;
+
       (props.latLngs || []).forEach((latlng, idx) => {
         const marker = L.marker(latlng, {
           draggable: true,
@@ -71,7 +73,9 @@ export default defineComponent({
           context.emit("update:latLngs", updated);
           context.emit("change", updated);
         });
-        marker.addTo(map.value);
+        if (map.value) {
+          marker.addTo(map.value);
+        }
         handleMarkers.value.push(marker);
       });
     }
