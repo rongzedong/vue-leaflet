@@ -42,9 +42,15 @@ export default defineComponent({
         ? WINDOW_OR_GLOBAL.L
         : await import("leaflet/dist/leaflet-src.esm");
 
+
+      const latLngs = props.latLngs ?? [];
       const bounds = props.bounds
         ? latLngBounds(props.bounds)
-        : latLngBounds(props.latLngs || []);
+        : latLngBounds(
+            Array.isArray(latLngs[0])
+              ? (latLngs[0] as L.LatLngExpression[])
+              : (latLngs as L.LatLngExpression[])
+      );
       leafletObject.value = markRaw<L.Rectangle>(rectangle(bounds, options));
 
       const { listeners } = remapEvents(context.attrs);
