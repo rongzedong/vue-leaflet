@@ -1,8 +1,7 @@
 import type L from "leaflet";
 import type { PropType } from "vue";
-
+import { ref } from "vue";
 import { propsToLeafletOptions } from "@src/utils";
-
 import { pathProps, setupPath } from "./path";
 
 export const polylineProps = {
@@ -19,6 +18,10 @@ export const polylineProps = {
     required: true,
     custom: true,
   },
+  edit: {
+    type: Boolean,
+    default: false,
+  },
 } as const;
 
 export const setupPolyline = (props, leafletRef, context) => {
@@ -34,6 +37,41 @@ export const setupPolyline = (props, leafletRef, context) => {
     pathOptions
   );
 
+  // --- 编辑模式相关 ---
+  const handleMarkers = ref<L.Marker[]>([]);
+
+  function addEditHandles(map: L.Map) {
+    removeEditHandles();
+    if (!leafletRef.value || !map) return;
+    (props.latLngs || []).forEach((latlng, idx) => {
+      const marker = L.marker(latlng, {
+        draggable: true,
+        icon: L.divIcon({
+          className: "edit-handle",
+          iconSize: [12, 12],
+          iconAnchor: [6, 6],
+          html: `<div style="width:12px;height:12px;background:#fff;border:2px solid #41b782;border-radius:2px"></div>`,
+        }),
+        interactive: true,
+      });
+      marker.on("drag", (e) => {
+        const newLatLng = e.target.getLatLng();
+        const updated = [...props.latLngs];
+        updated[idx] = [newLatLng.lat, newLatLng.lng];
+        context.emit("update:latLngs", updated);
+        context.emit("change", updated);
+      });
+      marker.addTo(map);
+      handleMarkers.value.push(marker);
+    });
+  }
+
+  function removeEditHandles() {
+    handleMarkers.value.forEach((m) => m.remove());
+    handleMarkers.value = [];
+  }
+  // --- END 编辑模式相关 ---
+
   const methods = {
     ...pathMethods,
     setSmoothFactor(smoothFactor) {
@@ -45,7 +83,10 @@ export const setupPolyline = (props, leafletRef, context) => {
     addLatLng(latLng) {
       leafletRef.value.addLatLng(latLng);
     },
+    // 新增
+    addEditHandles,
+    removeEditHandles,
   };
 
-  return { options, methods };
+  return { options, methods, handleMarkers };
 };
