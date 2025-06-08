@@ -1,31 +1,32 @@
 import type L from "leaflet";
-import { ref, onBeforeUnmount } from "vue";
-import { RemoveLayerInjection } from "@src/types/injectionKeys";
-import { assertInject, propsToLeafletOptions } from "@src/utils";
+import type { PropType } from "vue";
+
+import { propsToLeafletOptions } from "@src/utils";
+
 import { pathProps, setupPath } from "./path";
 
 export const polylineProps = {
   ...pathProps,
   smoothFactor: {
     type: Number,
-    default: undefined,
   },
   noClip: {
     type: Boolean,
     default: undefined,
   },
   latLngs: {
-    type: Array as () => L.LatLngExpression[],
-    default: undefined,
-  },
-  edit: {
-    type: Boolean,
-    default: false,
+    type: Array as PropType<L.LatLngExpression[]>,
+    required: true,
+    custom: true,
   },
 } as const;
 
 export const setupPolyline = (props, leafletRef, context) => {
-  const { options: pathOptions, methods: pathMethods } = setupPath(props, leafletRef, context);
+  const { options: pathOptions, methods: pathMethods } = setupPath(
+    props,
+    leafletRef,
+    context
+  );
 
   const options = propsToLeafletOptions<L.PolylineOptions>(
     props,
@@ -44,7 +45,6 @@ export const setupPolyline = (props, leafletRef, context) => {
     addLatLng(latLng) {
       leafletRef.value.addLatLng(latLng);
     },
-    // （如有原addEditHandles/removeEditHandles等方法，可安全移除，仅保留与本次需求相关方法）
   };
 
   return { options, methods };
