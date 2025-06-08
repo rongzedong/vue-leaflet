@@ -54,6 +54,10 @@ const routes = [
     path: "/svg-overlay",
     component: () => import("./views/SVGOverlayDemo.vue"),
   },
+  {
+    path: "/video-overlay",
+    component: () => import("./views/VideoOverlayDemo.vue"),
+  },
   { path: "/polygon", component: () => import("./views/PolygonDemo.vue") },
   { path: "/polyline", component: () => import("./views/PolylineDemo.vue") },
   { path: "/popups", component: () => import("./views/PopupsDemo.vue") },
