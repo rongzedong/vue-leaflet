@@ -1,121 +1,164 @@
 <script lang="ts">
-import L from "leaflet";
-import { defineComponent, markRaw, onMounted, ref, watch, onUnmounted } from "vue";
-import { AddLayerInjection, RemoveLayerInjection } from "@src/types/injectionKeys";
-import { setupPolygon, polygonProps } from "@src/functions/polygon";
+import type L from "leaflet";
+import {
+  defineComponent,
+  inject,
+  markRaw,
+  nextTick,
+  onMounted,
+  ref,
+  watch,
+  computed,
+  h,
+  Fragment,
+  type VNode
+} from "vue";
+
 import { render } from "@src/functions/layer";
-import { assertInject } from "@src/utils.js";
-import type { LatLngExpression } from 'leaflet';
+import { polygonProps, setupPolygon } from "@src/functions/polygon";
+import {
+  AddLayerInjection,
+  UseGlobalLeafletInjection,
+} from "@src/types/injectionKeys";
+import {
+  WINDOW_OR_GLOBAL,
+  assertInject,
+  propsBinder,
+  remapEvents,
+} from "@src/utils.js";
+import LLayerGroup from "./LLayerGroup.vue";
+import LMarker from "./LMarker.vue";
+
+const isClient = typeof window !== "undefined";
+
+// 判断多环/单环，输出二维数组
+function getRings(latLngs: any[]): any[][] {
+  if (!Array.isArray(latLngs) || !latLngs.length) return [];
+  // 多环（二维数组）
+  if (Array.isArray(latLngs[0]) && Array.isArray(latLngs[0][0])) {
+    return latLngs;
+  }
+  // 单环（一维数组）
+  if (
+    Array.isArray(latLngs[0]) &&
+    (typeof latLngs[0][0] === "number" || typeof latLngs[0][0] === "string")
+  ) {
+    return [latLngs];
+  }
+  return [];
+}
 
 export default defineComponent({
   name: "LPolygon",
-  props: polygonProps,
-  emits: ['update:latLngs'],
+  props: {
+    ...polygonProps,
+    edit: { type: Boolean, default: false }
+  },
+  emits: ['update:latLngs', 'ready'],
+  components: { LLayerGroup, LMarker },
   setup(props, context) {
     const leafletObject = ref<L.Polygon>();
-    const editLayerGroup = ref<L.LayerGroup | null>(null);
+    const ready = ref(false);
+
+    const useGlobalLeaflet = inject(UseGlobalLeafletInjection);
     const addLayer = assertInject(AddLayerInjection);
-    const removeLayer = assertInject(RemoveLayerInjection);
 
     const { options, methods } = setupPolygon(props, leafletObject, context);
 
-    function getPoints() {
-      if (props.latLngs && props.latLngs.length) return props.latLngs;
-      return [];
-    }
+    // 二维环数据，兼容单环/多环
+    const rings = computed(() => getRings(props.latLngs));
 
-    // ========== 新增编辑模式相关 ==========
-    function addEditLayerGroup() {
-      if (editLayerGroup.value) return;
+    // 编辑模式的 marker 拖拽回调
+    function onMarkerDrag(ringIdx: number, idx: number, e: any) {
+      const latlng =
+        e.latlng ??
+        (e.target && e.target.getLatLng && e.target.getLatLng());
+      if (!latlng) return;
 
-      const latlngs = [...getPoints()];
-      // if (!latlngs.length) throw new Error('Polygon latlngs is empty');
-      // console.log(latlngs)
-      if(latlngs.length===0) return;
-
-      // 判断多环还是单环
-      let isMulti = false;
-      if ( Array.isArray(latlngs[0]) && Array.isArray(latlngs[0][0]) ) {
-        isMulti = true;
-      } else if ( Array.isArray(latlngs[0]) && (typeof latlngs[0][0] === 'number' || typeof latlngs[0][0] === 'string') ) {
-        isMulti = false;
-      } else {
-        throw new Error('Polygon latlngs format is invalid');
+      const nextRings = rings.value.map(ring => ring.slice());
+      nextRings[ringIdx][idx] = [latlng.lat, latlng.lng];
+      // Leaflet 兼容单环/多环
+      if (leafletObject.value) {
+        leafletObject.value.setLatLngs(
+          rings.value.length > 1 ? nextRings : nextRings[0]
+        );
       }
-
-      const wrap = isMulti ? (latlngs as L.LatLngExpression[][]) : [latlngs as L.LatLngExpression[]];
-
-      const group = L.layerGroup();
-      wrap.forEach((ring, ringIdx) => {
-        ring.forEach((latlng, idx) => {
-          const marker = L.marker(latlng, { draggable: true });
-
-          marker.on('drag', (e: L.LeafletEvent) => {
-            const latlng = marker.getLatLng();
-            wrap[ringIdx][idx] = [latlng.lat, latlng.lng];
-            const newLatlngs = isMulti ? wrap : wrap[0];
-            leafletObject.value?.setLatLngs(newLatlngs);
-          });
-          marker.on('dragend', () => {
-            // 仅在拖动放开时 emit
-            const newLatlngs = isMulti ? wrap : wrap[0];
-            context.emit('update:latLngs', newLatlngs);
-          });
-          group.addLayer(marker);
-        });
-      });
-
-      editLayerGroup.value = group;
-      addLayer({ leafletObject: group });
+      context.emit(
+        "update:latLngs",
+        rings.value.length > 1 ? nextRings : nextRings[0]
+      );
     }
 
-    function removeEditLayerGroup() {
-      if (editLayerGroup.value) {
-        removeLayer({ leafletObject: editLayerGroup.value as L.LayerGroup });
-        editLayerGroup.value = null;
-      }
-    }
-    // =====================================
+    onMounted(async () => {
+      if (!isClient) return;
+      const { polygon }: typeof L = useGlobalLeaflet
+        ? WINDOW_OR_GLOBAL.L
+        : await import("leaflet/dist/leaflet-src.esm");
 
-    onMounted(() => {
-      leafletObject.value = markRaw(L.polygon(getPoints(), options));
+      leafletObject.value = markRaw<L.Polygon>(polygon(props.latLngs, options));
+      const { listeners } = remapEvents(context.attrs);
+      leafletObject.value.on(listeners);
+
+      propsBinder(methods, leafletObject.value, props);
+
       addLayer({
         ...props,
         ...methods,
         leafletObject: leafletObject.value,
       });
-
-      watch(
-        () => props.edit,
-        (val) => {
-          if (val) {
-            addEditLayerGroup();
-          } else {
-            removeEditLayerGroup();
-          }
-        },
-        { immediate: true }
-      );
-      watch(
-        () => getPoints(),
-        () => {
-          leafletObject.value?.setLatLngs(getPoints());
-          if (props.edit) {
-            removeEditLayerGroup();
-            addEditLayerGroup();
-          }
-        }
-      );
+      ready.value = true;
+      nextTick(() => context.emit("ready", leafletObject.value));
     });
 
-    onUnmounted(() => {
-      removeEditLayerGroup();
-    });
+    // latLngs 响应式同步
+    watch(
+      () => props.latLngs,
+      val => {
+        if (leafletObject.value) leafletObject.value.setLatLngs(val);
+      }
+    );
 
-    return { leafletObject, ready: true };
+    return {
+      ready,
+      leafletObject,
+      rings,
+      onMarkerDrag,
+      isClient,
+      props
+    };
   },
   render() {
-    return render(this.ready, this.$slots);
+    if (!this.isClient) return null;
+
+    // let editLayer = null;
+    // 编辑时渲染 marker 组
+    let editLayer: VNode | null = null;
+
+    if (this.props.edit && this.rings.length) {
+      editLayer = h(
+        LLayerGroup,
+        {},
+        {
+          default: () =>
+            this.rings.flatMap((ring, ringIdx) =>
+              ring.map((latlng, idx) =>
+                h(LMarker, {
+                  key: `${ringIdx}-${idx}`,
+                  draggable: true,
+                  latLng: latlng,
+                  onDrag: (e) => this.onMarkerDrag(ringIdx, idx, e),
+                  onDragend: (e) => this.onMarkerDrag(ringIdx, idx, e),
+                })
+              )
+            ),
+        }
+      );
+    }
+
+    return h(Fragment, {}, [
+      render(this.ready, this.$slots),
+      editLayer
+    ]);
   },
 });
 </script>
