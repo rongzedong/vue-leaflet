@@ -1,151 +1,105 @@
 <script lang="ts">
-import L from "leaflet";
-import { debounce } from "ts-debounce";
+import type L from "leaflet";
 import {
   defineComponent,
   inject,
   markRaw,
   nextTick,
-  onBeforeUnmount,
   onMounted,
-  provide,
-  watch,
   ref,
+  watch,
+  computed,
+  h,
+  Fragment,
+  type VNode
 } from "vue";
 
-import { setupPolyline, polylineProps } from "@src/functions/polyline";
 import { render } from "@src/functions/layer";
+import { polylineProps, setupPolyline } from "@src/functions/polyline";
 import {
   AddLayerInjection,
-  RemoveLayerInjection,
-  CanSetParentHtmlInjection,
-  SetIconInjection,
-  SetParentHtmlInjection,
   UseGlobalLeafletInjection,
 } from "@src/types/injectionKeys";
 import {
   WINDOW_OR_GLOBAL,
   assertInject,
-  cancelDebounces,
-  isFunction,
   propsBinder,
   remapEvents,
 } from "@src/utils.js";
 
-// 增强：检查点是否合法
+import LLayerGroup from "./LLayerGroup.vue";
+import LMarker from "./LMarker.vue";
+
+const isClient = typeof window !== "undefined";
+
 function isValidLatLng(latlng: any): boolean {
-  // 支持 [number, number] 或 {lat: number, lng: number}
   return (
-    Array.isArray(latlng) && latlng.length === 2 &&
-    typeof latlng[0] === 'number' && typeof latlng[1] === 'number'
-  ) || (
-    latlng && typeof latlng.lat === 'number' && typeof latlng.lng === 'number'
-  );
+    Array.isArray(latlng) &&
+    latlng.length === 2 &&
+    typeof latlng[0] === "number" &&
+    typeof latlng[1] === "number"
+  ) ||
+    (latlng &&
+      typeof latlng.lat === "number" &&
+      typeof latlng.lng === "number");
 }
 
 export default defineComponent({
   name: "LPolyline",
-  props: polylineProps,
+  props: {
+    ...polylineProps,
+    edit: {
+      type: Boolean,
+      default: false,
+    }
+  },
   emits: ['update:latLngs', 'ready'],
+  components: { LLayerGroup, LMarker },
   setup(props, context) {
     const leafletObject = ref<L.Polyline>();
     const ready = ref(false);
-    const editLayerGroup = ref<L.LayerGroup | null>(null);
+
+    const useGlobalLeaflet = inject(UseGlobalLeafletInjection);
     const addLayer = assertInject(AddLayerInjection);
-    const removeLayer = assertInject(RemoveLayerInjection);
 
     const { options, methods } = setupPolyline(props, leafletObject, context);
 
+    // 只返回有效点
+    const points = computed(() =>
+      Array.isArray(props.latLngs) ? props.latLngs.filter(isValidLatLng) : []
+    );
 
+    // 编辑点，只有在 edit=true 时才有
+    const editPoints = computed(() => (props.edit ? points.value : []));
 
-
-
-    // 增强：只返回有效点
-    function getPoints() {
-      if (Array.isArray(props.latLngs) && props.latLngs.length) {
-        return props.latLngs.filter(isValidLatLng);
-      }
-      return [];
+    // 拖动 marker 更新 latLngs
+    function onMarkerDrag(idx: number, e: any) {
+      const latlng =
+        e.latlng ??
+        (e.target && e.target.getLatLng && e.target.getLatLng());
+      if (!latlng) return;
+      const updated = points.value.slice();
+      updated[idx] = [latlng.lat, latlng.lng];
+      if (leafletObject.value) leafletObject.value.setLatLngs(updated);
+      context.emit("update:latLngs", updated);
     }
 
-    // ========== 新增编辑模式相关 ==========
-    function addEditLayerGroup() {
-      if (editLayerGroup.value) return;
-      const latlngs = [...getPoints()];
-      if (!latlngs.length) {
-        // 增强：无有效点不创建编辑层组
-        return;
-      }
-      const group = L.layerGroup();
-      latlngs.forEach((latlng, idx) => {
-        if (!isValidLatLng(latlng)) return; // 增强：跳过无效点
-        const marker = L.marker(latlng, { draggable: true });
-        marker.on('drag', (e: L.LeafletEvent) => {
-          const latlng = marker.getLatLng();
-          latlngs[idx] = [latlng.lat, latlng.lng];
-          leafletObject.value?.setLatLngs(latlngs);
-        });
-        marker.on('dragend', () => {
-          context.emit('update:latLngs', latlngs);
-        });
-        group.addLayer(marker);
-      });
-      editLayerGroup.value = group;
-      addLayer({ leafletObject: group });
-    }
-
-    function removeEditLayerGroup() {
-      if (editLayerGroup.value) {
-        removeLayer({ leafletObject: editLayerGroup.value as unknown as L.LayerGroup });
-        editLayerGroup.value = null;
-      }
-    }
-    // =====================================
-
-
-     watch(
-        () => props.edit,
-        (val) => {
-          if (val) {
-            addEditLayerGroup();
-          } else {
-            removeEditLayerGroup();
-          }
-        },
-        { immediate: true }
-      );
-      watch(
-        () => getPoints(),
-        () => {
-          const pts = getPoints();
-          if (!leafletObject.value) {
-            if (pts.length) {
-              leafletObject.value = markRaw(L.polyline(pts, options));
-              addLayer({
-                ...props,
-                ...methods,
-                leafletObject: leafletObject.value,
-              });
-            }
-          } else {
-            leafletObject.value.setLatLngs(pts);
-          }
-          if (props.edit) {
-            removeEditLayerGroup();
-            addEditLayerGroup();
-          }
-        }
-      );
-
+    // SSR安全
     onMounted(async () => {
-      const latlngs = [...getPoints()];
+      if (!isClient) return;
+      const { polyline }: typeof L = useGlobalLeaflet
+        ? WINDOW_OR_GLOBAL.L
+        : await import("leaflet/dist/leaflet-src.esm");
 
-      // leafletObject.value = markRaw<L.Polyline>(Polyline(props.latLng, options));
-      leafletObject.value = markRaw(L.polyline(latlngs, options));
+      leafletObject.value = markRaw<L.Polyline>(
+        polyline(points.value, options)
+      );
+
       const { listeners } = remapEvents(context.attrs);
       leafletObject.value.on(listeners);
 
       propsBinder(methods, leafletObject.value, props);
+
       addLayer({
         ...props,
         ...methods,
@@ -155,11 +109,53 @@ export default defineComponent({
       nextTick(() => context.emit("ready", leafletObject.value));
     });
 
-    return { ready, leafletObject };
+    // latLngs 有变化时，同步
+    watch(
+      () => points.value,
+      (pts) => {
+        if (leafletObject.value) {
+          leafletObject.value.setLatLngs(pts);
+        }
+      }
+    );
+
+    return {
+      ready,
+      leafletObject,
+      editPoints,
+      onMarkerDrag,
+      isClient,
+      props,
+    };
   },
   render() {
-    return render(this.ready, this.$slots);
-  },
-});
+    if (!this.isClient) return null;
 
+    let editLayer: VNode | null = null;
+
+    if (this.props.edit && this.editPoints.length) {
+      editLayer = h(
+        LLayerGroup,
+        {},
+        {
+          default: () =>
+            this.editPoints.map((latlng, idx) =>
+              h(LMarker, {
+                key: idx,
+                draggable: true,
+                latLng: latlng,
+                onDrag: (e) => this.onMarkerDrag(idx, e),
+                onDragend: (e) => this.onMarkerDrag(idx, e),
+              })
+            ),
+        }
+      );
+    }
+
+    return h(Fragment, {}, [
+      render(this.ready, this.$slots),
+      editLayer,
+    ]);
+  }
+});
 </script>
