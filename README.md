@@ -20,6 +20,7 @@ or join the [discussions](https://github.com/vue-leaflet/vue-leaflet/discussions
 - LIcon
 - LImageOverlay
 - LSVGOverlay
+- LVideoOverlay
 - LMap
 - LMarker
 - LPolygon
