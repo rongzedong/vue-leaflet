@@ -11,6 +11,7 @@ export { default as LGridLayer } from "./LGridLayer.vue";
 export { default as LIcon } from "./LIcon.vue";
 export { default as LImageOverlay } from "./LImageOverlay.vue";
 export { default as LSVGOverlay } from "./LSVGOverlay.vue";
+export { default as LVideoOverlay } from "./LVideoOverlay.vue";
 export { default as LLayerGroup } from "./LLayerGroup.vue";
 export { default as LMap } from "./LMap.vue";
 export { default as LMarker } from "./LMarker.vue";
