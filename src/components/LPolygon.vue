@@ -154,7 +154,7 @@ export default defineComponent({
       );
       if (insertIdx < 0) return;
       // 插入点
-      const insertLatLng = [latlng.lat, latlng.lng];
+      const insertLatLng = LLatLng(latlng.lat, latlng.lng);
       pts.splice(insertIdx + 1, 0, insertLatLng);
       if (leafletObject.value) leafletObject.value.setLatLngs([pts]);
       context.emit("update:latLngs", pts);
